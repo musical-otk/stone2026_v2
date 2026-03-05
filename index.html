@@ -2614,7 +2614,7 @@ function revalidateMilestones(board) {
   });
 }
 
-function applyStampToBoard(boardId, qty, date, historyComment) {
+function applyStampToBoard(boardId, qty, date, historyComment, userComment) {
   const boards = getStampBoards();
   const board  = boards.find(b => b.id === boardId);
   if (!board) return null;
@@ -2627,7 +2627,7 @@ function applyStampToBoard(boardId, qty, date, historyComment) {
 
   if (!board.history) board.history = [];
   const qtyLabel = actualQty > 1 ? ' ×' + actualQty : '';
-  board.history.push({ date, method: historyComment + qtyLabel, comment: '', qty: actualQty });
+  board.history.push({ date, method: historyComment + qtyLabel, comment: userComment || '', qty: actualQty });
   recalcStampCount(board);
 
   if (!board.milestones) board.milestones = [
@@ -2660,8 +2660,9 @@ function addStamp() {
   const qty       = qtyEl ? parseInt(qtyEl.value) || 1 : 1;
   const dateEl    = document.getElementById('stamp-date');
   const date      = dateEl && dateEl.value ? dateEl.value : localDate();
+  const comment   = (document.getElementById('stamp-comment')?.value || '').trim();
 
-  const toastMsg = applyStampToBoard(boardId, qty, date, method);
+  const toastMsg = applyStampToBoard(boardId, qty, date, method, comment);
   if (!toastMsg) return;
   closePanel('overlay-add-stamp');
   showToast(toastMsg);
