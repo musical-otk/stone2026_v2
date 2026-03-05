@@ -412,6 +412,7 @@
   <div class="card">
     <div class="card-title">📋 최근 관람</div>
     <div id="home-recent"></div>
+    <div id="home-recent-more" style="text-align:center;margin-top:6px;"></div>
   </div>
 </div>
 
@@ -1682,18 +1683,28 @@ function renderHome() {
     }).join('')}</div>`;
 
   // ⑤ 최근 관람 (이미 지난 것 또는 미정)
-  const past = records
+  const pastAll = records
     .filter(r => r.date < today)
-    .sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time))
-    .slice(0,3);
-  document.getElementById('home-recent').innerHTML = past.length===0
+    .sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
+  const homeExpanded = DB.get('homeRecentExpanded', false);
+  const past = homeExpanded ? pastAll : pastAll.slice(0,3);
+  const renderMini = r => `
+      <div class="record-mini" onclick="openDetail('${r.id}')">
+        <div class="record-date-badge">${r.date.slice(5)} ${r.time}</div>
+        <div class="record-casting">${r.skylar} · ${r.didi}${r.role3?' · '+r.role3:''}</div>
+        <div class="record-rating">${r.rating?'★'.repeat(r.rating):''}</div>
+      </div>`;
+  document.getElementById('home-recent').innerHTML = pastAll.length===0
     ? '<div style="text-align:center;color:var(--text3);padding:12px;font-size:13px;">기록이 없습니다</div>'
-    : past.map(r=>`
-        <div class="record-mini" onclick="openDetail('${r.id}')">
-          <div class="record-date-badge">${r.date.slice(5)} ${r.time}</div>
-          <div class="record-casting">${r.skylar} · ${r.didi}${r.role3?' · '+r.role3:''}</div>
-          <div class="record-rating">${r.rating?'★'.repeat(r.rating):''}</div>
-        </div>`).join('');
+    : past.map(renderMini).join('');
+  const moreEl = document.getElementById('home-recent-more');
+  if (pastAll.length > 3) {
+    moreEl.innerHTML = homeExpanded
+      ? `<button class="btn btn-outline btn-sm" onclick="DB.set('homeRecentExpanded',false);renderHome()">접기</button>`
+      : `<button class="btn btn-outline btn-sm" onclick="DB.set('homeRecentExpanded',true);renderHome()">전체 보기 (${pastAll.length}건)</button>`;
+  } else {
+    moreEl.innerHTML = '';
+  }
 }
 
 // ============================================================
@@ -3058,7 +3069,24 @@ function _processV1Import(v1) {
   if (!v1.boards || !v1.performances) throw new Error('올바른 형식이 아닙니다');
 
   const discountMap = { '프리뷰':'preview','재관':'rewatch30','증빙프패':'discountPass','40%':'discount40','50%':'discount50' };
-  const timeMap = { '낮':'14:00','밤':'19:00' };
+
+  // 스케줄에서 날짜+회차(낮/밤/'')로 실제 시간+캐스팅 조회
+  const schedule = getSchedule();
+  const schByDate = {};
+  schedule.forEach(s => {
+    if (!schByDate[s.date]) schByDate[s.date] = [];
+    schByDate[s.date].push(s);
+  });
+  Object.values(schByDate).forEach(arr => arr.sort((a,b) => a.time.localeCompare(b.time)));
+
+  function resolveShow(date, timeSlot) {
+    const shows = schByDate[date] || [];
+    if (!shows.length) return null;
+    if (timeSlot === '낮') return shows[0];              // 가장 이른 회차 (낮)
+    if (timeSlot === '밤') return shows[shows.length-1]; // 가장 늦은 회차 (밤)
+    // '' : 1회차면 유일한 회차, 2회차면 마지막(밤) 회차
+    return shows[shows.length-1];
+  }
 
   const boardHistMap = {};
   v1.boards.forEach(b => { boardHistMap[b.id] = []; });
@@ -3074,9 +3102,13 @@ function _processV1Import(v1) {
         comment: '', qty: stampQty
       });
     }
+    const show = resolveShow(p.date, p.timeSlot);
     return {
-      id: p.id, date: p.date, time: timeMap[p.timeSlot] || '',
-      skylar: '', didi: '', role3: '', isBooked: true,
+      id: p.id, date: p.date, time: show ? show.time : '',
+      skylar: show ? (show.skylar||'') : '',
+      didi:   show ? (show.didi||'')   : '',
+      role3:  show ? (show.role3||'')  : '',
+      isBooked: true,
       seatZone: null, seatRow: null, seatNumber: null, price: null,
       discountType: discountMap[p.discount] || null,
       stampBoardId, stampQty,
