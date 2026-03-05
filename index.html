@@ -1598,6 +1598,28 @@ function renderHome() {
   }
 
   // ② 나머지 예정 일정 리스트
+  // 도장 마일스톤 계산: 미래 일정 순서대로 도장 누적 → 마일스톤 도달 여부
+  const stampBoards = getStampBoards();
+  const runningCounts = {};
+  stampBoards.forEach(b => { runningCounts[b.id] = calcStampCounts(b).cur; });
+  const milestoneEmoji = {}; // recordId → emoji
+  [...(nextShow ? [nextShow] : []), ...rest]
+    .filter(r => r.stampBoardId && r.stampQty)
+    .sort((a,b) => a.date.localeCompare(b.date)||a.time.localeCompare(b.time))
+    .forEach(r => {
+      const board = stampBoards.find(b => b.id === r.stampBoardId);
+      if (!board) return;
+      const before = runningCounts[r.stampBoardId] || 0;
+      const after  = before + (r.stampQty || 1);
+      runningCounts[r.stampBoardId] = after;
+      (board.milestones || []).forEach(m => {
+        if (before < m.at && after >= m.at) {
+          const match = m.reward.match(/\p{Emoji}/u);
+          milestoneEmoji[r.id] = match ? match[0] : '🎖';
+        }
+      });
+    });
+
   const upcomingCard = document.getElementById('home-upcoming-card');
   if (rest.length > 0) {
     upcomingCard.style.display = '';
@@ -1607,11 +1629,12 @@ function renderHome() {
       const diff2 = Math.round((d2-todayD2)/86400000);
       const dday2 = diff2===0 ? 'D-DAY' : `D-${diff2}`;
       const seat2 = r.seatZone ? `${r.seatZone}${r.seatRow}열 ${r.seatNumber}번` : '';
+      const mEmoji = milestoneEmoji[r.id] ? `<span style="font-size:13px;margin-right:2px;">${milestoneEmoji[r.id]}</span>` : '';
       return `<div class="upcoming-item" onclick="openDetail('${r.id}')">
         <div class="upcoming-dday" style="${r.isBooked===false ? 'color:var(--text3);' : ''}">${dday2}</div>
         <div class="upcoming-date">${r.date.slice(5)} (${dow[d2.getDay()]}) ${r.time}</div>
         ${seat2 ? `<div class="upcoming-seat">${seat2}</div>` : ''}
-        <div class="upcoming-cast">${r.skylar} · ${r.didi}${r.role3?' · '+r.role3:''}${r.isBooked===false ? ' <span style="font-size:10px;color:var(--text3);">미정</span>' : ''}</div>
+        <div class="upcoming-cast">${mEmoji}${r.skylar} · ${r.didi}${r.role3?' · '+r.role3:''}${r.isBooked===false ? ' <span style="font-size:10px;color:var(--text3);">미정</span>' : ''}</div>
       </div>`;
     }).join('');
   } else {
