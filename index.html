@@ -586,6 +586,7 @@
       <button class="btn btn-accent" style="width:100%;margin-top:6px;" onclick="importV1DataFromText()">가져오기</button>
     </div>
     <div id="import-v1-status" style="font-size:12px;margin-top:8px;"></div>
+    <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="fixRecordTimings()">스케줄 기반 시간/캐스팅 자동 보완</button>
   </div>
   <div class="card">
     <div class="card-title">📱 홈스크린 추가 (PWA)</div>
@@ -1686,8 +1687,8 @@ function renderHome() {
   const pastAll = records
     .filter(r => r.date < today)
     .sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
-  const homeExpanded = DB.get('homeRecentExpanded', false);
-  const past = homeExpanded ? pastAll : pastAll.slice(0,3);
+  const showCount = DB.get('homeRecentCount', 3);
+  const past = pastAll.slice(0, showCount);
   const renderMini = r => `
       <div class="record-mini" onclick="openDetail('${r.id}')">
         <div class="record-date-badge">${r.date.slice(5)} ${r.time}</div>
@@ -1698,10 +1699,11 @@ function renderHome() {
     ? '<div style="text-align:center;color:var(--text3);padding:12px;font-size:13px;">기록이 없습니다</div>'
     : past.map(renderMini).join('');
   const moreEl = document.getElementById('home-recent-more');
-  if (pastAll.length > 3) {
-    moreEl.innerHTML = homeExpanded
-      ? `<button class="btn btn-outline btn-sm" onclick="DB.set('homeRecentExpanded',false);renderHome()">접기</button>`
-      : `<button class="btn btn-outline btn-sm" onclick="DB.set('homeRecentExpanded',true);renderHome()">전체 보기 (${pastAll.length}건)</button>`;
+  if (showCount < pastAll.length) {
+    const addCount = Math.min(3, pastAll.length - showCount);
+    moreEl.innerHTML = `<button class="btn btn-outline btn-sm" onclick="DB.set('homeRecentCount',${showCount+3});renderHome()">더보기 (+${addCount}건)</button>`;
+  } else if (showCount > 3) {
+    moreEl.innerHTML = `<button class="btn btn-outline btn-sm" onclick="DB.set('homeRecentCount',3);renderHome()">접기</button>`;
   } else {
     moreEl.innerHTML = '';
   }
@@ -3166,6 +3168,39 @@ function importV1Data(e) {
     e.target.value = '';
   };
   reader.readAsText(file);
+}
+
+function fixRecordTimings() {
+  const statusEl = document.getElementById('import-v1-status');
+  const schedule = getSchedule();
+  const schByDate = {};
+  schedule.forEach(s => {
+    if (!schByDate[s.date]) schByDate[s.date] = [];
+    schByDate[s.date].push(s);
+  });
+  Object.values(schByDate).forEach(arr => arr.sort((a,b) => a.time.localeCompare(b.time)));
+
+  const recs = getRecords();
+  let fixed = 0;
+  recs.forEach(r => {
+    if (r.time && r.skylar && r.didi) return;
+    const shows = schByDate[r.date] || [];
+    if (!shows.length) return;
+    let show = r.time ? shows.find(s => s.time === r.time) : null;
+    if (!show && shows.length === 1) show = shows[0];
+    if (!show) return;
+    if (!r.time) r.time = show.time;
+    if (!r.skylar) r.skylar = show.skylar || '';
+    if (!r.didi)   r.didi   = show.didi   || '';
+    if (!r.role3)  r.role3  = show.role3  || '';
+    fixed++;
+  });
+  saveRecords(recs);
+  renderHome(); renderCalendar(); renderStats();
+  if (statusEl) {
+    statusEl.textContent = fixed ? `✅ ${fixed}건 자동 보완 완료` : '보완할 기록 없음';
+    statusEl.style.color = 'var(--success)';
+  }
 }
 
 // ============================================================
