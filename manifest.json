@@ -1,0 +1,23 @@
+{
+  "name": "뮤지컬 스톤",
+  "short_name": "스톤",
+  "description": "뮤지컬 스톤 관극 다이어리",
+  "start_url": "/stone2026_v2/",
+  "scope": "/stone2026_v2/",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#B8182A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
