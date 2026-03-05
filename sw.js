@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stone2026v2-v5';
+const CACHE_NAME = 'stone2026v2-v6';
 const BASE = '/stone2026_v2';
 
 // 앱 시작 시 캐시할 파일들

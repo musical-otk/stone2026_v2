@@ -1614,8 +1614,8 @@ function renderHome() {
       runningCounts[r.stampBoardId] = after;
       (board.milestones || []).forEach(m => {
         if (before < m.at && after >= m.at) {
-          const match = m.reward.match(/\p{Emoji}/u);
-          milestoneEmoji[r.id] = match ? match[0] : '🎖';
+          const match = m.reward.match(/\p{Emoji_Presentation}/u);
+          if (match) milestoneEmoji[r.id] = match[0];
         }
       });
     });
