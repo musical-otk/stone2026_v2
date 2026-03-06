@@ -88,7 +88,9 @@
     font-size: 14px; outline: none; transition: border-color 0.2s;
   }
   .form-control:focus { border-color: var(--accent); }
-  input[type="date"].form-control { height: 44px; }
+  @supports (-webkit-touch-callout: none) {
+    input[type="date"].form-control { height: 44px; }
+  }
   .form-row { display: flex; gap: 10px; }
   .form-row .form-group { flex: 1; }
   textarea.form-control { min-height: 80px; resize: vertical; }
