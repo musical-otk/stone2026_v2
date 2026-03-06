@@ -15,7 +15,7 @@
     --border: #e0e0dc; --text: #1a1a1a; --text1: #1a1a1a; --text2: #555550; --text3: #999990;
     --accent: #B8182A; --accent2: #8A1020; --accent-light: #F8E8EA;
     --danger: #cc4444; --success: #2a8a4a; --star: #f0a020;
-    --seat1: #EFC0C8; --seat2: #EDAAB5; --seat3: #D96070; --seat4: #C93040; --seat5: #8A1020;
+    --seat1: #F0C0CA; --seat2: #E09098; --seat3: #D96070; --seat4: #C93040; --seat5: #8A1020;
     --shadow: 0 2px 12px rgba(0,0,0,0.08); --radius: 12px; --tab-h: 64px;
   }
   [data-theme="dark"] {
@@ -88,6 +88,7 @@
     font-size: 14px; outline: none; transition: border-color 0.2s;
   }
   .form-control:focus { border-color: var(--accent); }
+  input[type="date"].form-control { -webkit-appearance: none; appearance: none; }
   .form-row { display: flex; gap: 10px; }
   .form-row .form-group { flex: 1; }
   textarea.form-control { min-height: 80px; resize: vertical; }
@@ -178,7 +179,8 @@
   .role-section-title { font-size: 12px; font-weight: 700; color: var(--text3); padding: 6px 8px 2px; }
 
   /* HEATMAP */
-  .heatmap-wrap { display: flex; flex-direction: column; align-items: center; overflow-x: auto; padding: 8px 0; }
+  .heatmap-scroll { overflow-x: auto; }
+  .heatmap-wrap { display: flex; flex-direction: column; align-items: center; padding: 8px 0; width: max-content; margin: 0 auto; }
   .hm-zone-header { display: flex; gap: 2px; align-items: center; margin-bottom: 4px; }
   .hm-a-header { width: 163px; text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); flex-shrink: 0; }
   .hm-label-gap { width: 28px; flex-shrink: 0; }
@@ -513,7 +515,7 @@
   </div>
   <div class="card">
     <div class="card-title">💺 좌석 히트맵</div>
-    <div class="heatmap-wrap" id="heatmap"></div>
+    <div class="heatmap-scroll"><div class="heatmap-wrap" id="heatmap"></div></div>
     <div class="heatmap-legend">
       <div class="legend-item"><div class="legend-dot" style="background:var(--bg3);border:1px solid var(--border)"></div>0회</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--seat1)"></div>1회</div>
@@ -2267,8 +2269,8 @@ function renderStampBoards() {
     let statusHtml = '';
     if (paused)               statusHtml = `<div class="stamp-status-row stamp-status-paused">일시정지 중</div>`;
     else if (alldone)         statusHtml = `<div class="stamp-status-row stamp-status-done">🏆 완성! 미니 OST + 50% 할인권</div>`;
-    else if (mid5done)        statusHtml = `<div class="stamp-status-row stamp-status-mid">📸 폴라로이드 달성! (다음: 7칸 - 미니 OST + 50%)</div>`;
-    else if (mid3done)        statusHtml = `<div class="stamp-status-row stamp-status-mid">🎉 3칸 달성! 40% 할인권 2장 (다음: 5칸 📸 폴라로이드)</div>`;
+    else if (mid5done)        statusHtml = `<div class="stamp-status-row stamp-status-mid">📸 폴라로이드 달성!<br><span style="font-size:11px;">다음: 7칸 - 미니 OST + 50%</span></div>`;
+    else if (mid3done)        statusHtml = `<div class="stamp-status-row stamp-status-mid">🎉 3칸 달성! 40% 할인권 2장<br><span style="font-size:11px;">다음: 5칸 📸 폴라로이드</span></div>`;
     else if (toNext !== null) statusHtml = `<div class="stamp-status-row stamp-status-next">다음: 3칸 (현재: ${cur}칸)</div>`;
 
     return `<div class="stamp-board${paused ? ' paused' : ''}">
@@ -3117,29 +3119,43 @@ function _processV1Import(v1) {
   const boardHistMap = {};
   v1.boards.forEach(b => { boardHistMap[b.id] = []; });
 
-  const newRecords = v1.performances.map(p => {
-    const stamped = Object.entries(p.boardStamps || {}).find(([,c]) => c > 0);
-    const stampBoardId = stamped ? stamped[0] : null;
-    const stampQty = stamped ? stamped[1] : null;
-    if (stampBoardId && stampQty > 0) {
-      (boardHistMap[stampBoardId] = boardHistMap[stampBoardId] || []).push({
-        recordId: p.id, date: p.date,
-        method: `${p.date} 관람 연동${stampQty > 1 ? ' ×'+stampQty : ''}`,
-        comment: '', qty: stampQty
+  // 같은 date+timeSlot은 하나의 관람으로 묶기 (도장판 분리 기록 → 중복 record 방지)
+  const slotKeys = [];
+  const slotMap = {};
+  v1.performances.forEach(p => {
+    const key = p.date + '|' + (p.timeSlot || '');
+    if (!slotMap[key]) { slotMap[key] = []; slotKeys.push(key); }
+    slotMap[key].push(p);
+  });
+
+  const newRecords = slotKeys.map(key => {
+    const perfs = slotMap[key];
+    const main = perfs[0];
+    let stampBoardId = null, stampQty = null;
+    perfs.forEach(p => {
+      Object.entries(p.boardStamps || {}).forEach(([boardId, qty]) => {
+        if (qty > 0) {
+          (boardHistMap[boardId] = boardHistMap[boardId] || []).push({
+            recordId: main.id, date: p.date,
+            method: `${p.date} 관람 연동${qty > 1 ? ' ×'+qty : ''}`,
+            comment: '', qty
+          });
+          if (!stampBoardId) { stampBoardId = boardId; stampQty = qty; }
+        }
       });
-    }
-    const show = resolveShow(p.date, p.timeSlot);
+    });
+    const show = resolveShow(main.date, main.timeSlot);
     return {
-      id: p.id, date: p.date, time: show ? show.time : '',
+      id: main.id, date: main.date, time: show ? show.time : '',
       skylar: show ? (show.skylar||'') : '',
       didi:   show ? (show.didi||'')   : '',
       role3:  show ? (show.role3||'')  : '',
       isBooked: true,
       seatZone: null, seatRow: null, seatNumber: null, price: null,
-      discountType: discountMap[p.discount] || null,
+      discountType: discountMap[main.discount] || null,
       stampBoardId, stampQty,
-      rating: null, comment: '', memo: p.memo || '',
-      createdAt: p.date+'T00:00:00.000Z', updatedAt: p.date+'T00:00:00.000Z'
+      rating: null, comment: '', memo: main.memo || '',
+      createdAt: main.date+'T00:00:00.000Z', updatedAt: main.date+'T00:00:00.000Z'
     };
   });
 
