@@ -1655,7 +1655,7 @@ function renderHome() {
         const actualPct    = Math.min(100, Math.round(cur   / b.totalSlots * 100));
         const done = cur >= b.totalSlots;
         return `<div class="home-stamp-row">
-          <div class="home-stamp-name">${done?'🎉 ':''}[🎟 ${b.name}]</div>
+          <div class="home-stamp-name">[🎟 ${b.name}]${done?' 🎉':''}</div>
           <div class="home-stamp-bar">
             <div class="home-stamp-bar-fill scheduled" style="width:${scheduledPct}%"></div>
             <div class="home-stamp-bar-fill actual"    style="width:${actualPct}%"></div>
