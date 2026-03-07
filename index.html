@@ -2124,8 +2124,6 @@ function renderHeatmap() {
   for (let col = 1; col <= 10; col++) h += sc('B', 9, col);
   h += '</div></div>';
 
-  h += '<div style="height:8px;"></div>';
-
   // 10열 (A+B 연결석, 통로 없음): 열라벨 | 빈×2 + A3~11 + B1~7 + 판매보류×3
   h += `<div class="hm-row"><div class="row-label">10열</div><div class="hm-merged">${hd()}${hd()}`;
   for (let col = 3; col <= 11; col++) h += sc('A', 10, col);
