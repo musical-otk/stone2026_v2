@@ -2596,17 +2596,9 @@ function updateQtyLabel() {
 // returns: toastMsg string
 // ── 공통: history 기반 currentCount 재계산 ──────────────────
 function recalcStampCount(board) {
-  let total = 0;
-  (board.history || []).forEach(h => {
-    // qty 필드 우선, 없으면 method의 ×N 파싱, 그것도 없으면 1
-    if (h.qty != null) {
-      total += h.qty;
-    } else {
-      const m = h.method && h.method.match(/×(\d+)/);
-      total += m ? parseInt(m[1]) : 1;
-    }
-  });
-  board.currentCount = total;
+  // qty 필드 기준으로만 계산 (calcStampCounts와 동일한 로직)
+  // method의 ×N 파싱은 제거 — qty 없으면 1로 통일
+  board.currentCount = (board.history || []).reduce((t, h) => t + (h.qty ?? 1), 0);
   // notified는 여기서 건드리지 않음 — applyStamp/delete 시에만 재검사
 }
 
