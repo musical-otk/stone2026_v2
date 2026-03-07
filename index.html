@@ -1139,6 +1139,7 @@ function onUnconfirmedChange() {
 function populateStampSelect(keepBoardId) {
   const sel    = document.getElementById('rec-stamp-board');
   const boards = getStampBoards();
+  boards.forEach(b => recalcStampCount(b)); // 항상 이력 기준으로 재계산
   const saved  = sel.value; // 새 도장판 추가 후 select 갱신 시 기존 선택값 유지용
 
   // 상태별 분류
@@ -1510,28 +1511,19 @@ function deleteCurrentRecord() {
   const records = getRecords();
   const target  = records.find(x => x.id === currentDetailId);
   // 쿠폰 count는 records 기반 실시간 계산 — 별도 복원 처리 불필요
-  // 도장판 이력 복원 — 전체 보드 순회 (v1 import 시 여러 보드에 recordId가 심길 수 있음)
-  if (target) {
+  // 도장판 이력 복원
+  if (target?.stampBoardId) {
     const boards = getStampBoards();
-    let stampChanged = false;
-    boards.forEach(board => {
-      if (!board.history) return;
-      const before = board.history.length;
-      // recordId 기준으로 삭제 (전체 보드 대상)
-      board.history = board.history.filter(h => h.recordId !== target.id);
-      // stampBoardId 보드는 recordId 없는 구형 데이터를 위해 date 폴백 추가
-      if (board.id === target.stampBoardId && board.history.length === before) {
-        const idx = board.history.map((h,i)=>({h,i})).reverse()
-          .find(({h}) => h.date === target.date);
-        if (idx !== undefined) board.history.splice(idx.i, 1);
-      }
-      if (board.history.length !== before) {
-        recalcStampCount(board);
-        revalidateMilestones(board);
-        stampChanged = true;
-      }
-    });
-    if (stampChanged) saveStampBoards(boards);
+    const board  = boards.find(b => b.id === target.stampBoardId);
+    if (board && board.history) {
+      // recordId 매칭 우선, 없으면 date 폴백
+      const idx = board.history.map((h,i)=>({h,i})).reverse()
+        .find(({h}) => h.recordId === target.id || h.date === target.date);
+      if (idx !== undefined) board.history.splice(idx.i, 1);
+      recalcStampCount(board);
+      revalidateMilestones(board);
+      saveStampBoards(boards);
+    }
   }
   saveRecords(records.filter(x => x.id !== currentDetailId));
   closePanel('overlay-detail');
@@ -1664,7 +1656,7 @@ function renderHome() {
         const actualPct    = Math.min(100, Math.round(cur   / b.totalSlots * 100));
         const done = cur >= b.totalSlots;
         return `<div class="home-stamp-row">
-          <div class="home-stamp-name">[🎟 ${b.name}]${done?' 🎉':''}</div>
+          <div class="home-stamp-name">${done?'🎉 ':''}[🎟 ${b.name}]</div>
           <div class="home-stamp-bar">
             <div class="home-stamp-bar-fill scheduled" style="width:${scheduledPct}%"></div>
             <div class="home-stamp-bar-fill actual"    style="width:${actualPct}%"></div>
