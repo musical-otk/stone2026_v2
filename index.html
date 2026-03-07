@@ -1510,19 +1510,28 @@ function deleteCurrentRecord() {
   const records = getRecords();
   const target  = records.find(x => x.id === currentDetailId);
   // 쿠폰 count는 records 기반 실시간 계산 — 별도 복원 처리 불필요
-  // 도장판 이력 복원
-  if (target?.stampBoardId) {
+  // 도장판 이력 복원 — 전체 보드 순회 (v1 import 시 여러 보드에 recordId가 심길 수 있음)
+  if (target) {
     const boards = getStampBoards();
-    const board  = boards.find(b => b.id === target.stampBoardId);
-    if (board && board.history) {
-      // recordId 매칭 우선, 없으면 date 폴백
-      const idx = board.history.map((h,i)=>({h,i})).reverse()
-        .find(({h}) => h.recordId === target.id || h.date === target.date);
-      if (idx !== undefined) board.history.splice(idx.i, 1);
-      recalcStampCount(board);
-      revalidateMilestones(board);
-      saveStampBoards(boards);
-    }
+    let stampChanged = false;
+    boards.forEach(board => {
+      if (!board.history) return;
+      const before = board.history.length;
+      // recordId 기준으로 삭제 (전체 보드 대상)
+      board.history = board.history.filter(h => h.recordId !== target.id);
+      // stampBoardId 보드는 recordId 없는 구형 데이터를 위해 date 폴백 추가
+      if (board.id === target.stampBoardId && board.history.length === before) {
+        const idx = board.history.map((h,i)=>({h,i})).reverse()
+          .find(({h}) => h.date === target.date);
+        if (idx !== undefined) board.history.splice(idx.i, 1);
+      }
+      if (board.history.length !== before) {
+        recalcStampCount(board);
+        revalidateMilestones(board);
+        stampChanged = true;
+      }
+    });
+    if (stampChanged) saveStampBoards(boards);
   }
   saveRecords(records.filter(x => x.id !== currentDetailId));
   closePanel('overlay-detail');
