@@ -1,5 +1,7 @@
 [
   { "name": "쿠폰팩 증정", "startDate": "2026-02-16", "endDate": "2026-02-22", "color": "#E8A217" },
   { "name": "커튼콜 위크", "startDate": "2026-02-24", "endDate": "2026-03-01", "color": "#5B7EC4" },
-  { "name": "포토카드 증정", "startDate": "2026-03-02", "endDate": "2026-03-08", "color": "#E87D9B" }
+  { "name": "포토카드 증정", "startDate": "2026-03-02", "endDate": "2026-03-08", "color": "#E87D9B" },
+  { "name": "스페셜 커튼콜", "startDate": "2026-03-10", "endDate": "2026-03-15", "color": "#C06BB0" },
+  { "name": "스페셜 커튼콜", "startDate": "2026-03-17", "endDate": "2026-03-19", "color": "#C06BB0" }
 ]
