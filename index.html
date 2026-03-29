@@ -1971,12 +1971,12 @@ function renderCalDayPanel(ds, daySch, doneSet, bookedSet, records) {
       const key      = `${ds}-${s.time}`;
       const isDone   = doneSet.has(key);
       const isBooked = bookedSet.has(key);
-      const rec      = dayRecords.find(r => r.time === s.time);
+      const recs     = dayRecords.filter(r => r.time === s.time);
       const badge    = isBooked ? '<span class="cal-session-badge booked">✓ 예매확정</span>'
                      : isDone   ? '<span class="cal-session-badge done">✅</span>' : '';
-      const btn      = isDone
-        ? `<button class="cal-session-add" onclick="openDetail('${rec?.id}')">상세</button>`
-        : `<button class="cal-session-add" onclick="openAddRecordFromSchedule('${ds}','${s.time}','${s.skylar}','${s.didi}','${s.role3||''}')">+ 기록</button>`;
+      const btn      = recs.length === 0
+        ? `<button class="cal-session-add" onclick="openAddRecordFromSchedule('${ds}','${s.time}','${s.skylar}','${s.didi}','${s.role3||''}')">+ 기록</button>`
+        : recs.map((r,i) => `<button class="cal-session-add" onclick="openDetail('${r.id}')">${recs.length > 1 ? `상세${i+1}` : '상세'}</button>`).join('');
       html += `<div class="cal-session-row">
         <div class="cal-session-time">${s.time}</div>
         <div class="cal-session-casting"><span class="sky">${s.skylar}</span> · <span class="didi">${s.didi}</span>${s.role3?' · <span class="role3">'+s.role3+'</span>':''}</div>
